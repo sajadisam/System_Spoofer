@@ -28,5 +28,7 @@
 #include <sddl.h>
 #include <accctrl.h>
 #include <aclapi.h>
+#include "spdlog/spdlog.h"
+
 
 #include <json.hpp>
