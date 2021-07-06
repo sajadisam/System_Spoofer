@@ -23,21 +23,20 @@ Registry* RegistryManager::CreateRegistry(const std::string& path)
 }
 bool RegistryManager::SaveValues()
 {
-	std::ifstream f("Save.json");
+    std::ifstream f("Save.json");
 	if(f.good())
 	{
 		f.close();
 		return false;
 	}
-	std::ofstream file("Save.json");
+    std::ofstream file("Save.json");
 	nlohmann::json js;
 
 	for(const auto& registry : m_Registries)
 		js += registry->m_Save;
-
 	file << js.dump(1);
 	file.close();
-	f.close();
+    f.close();
 	return true;
 }
 bool RegistryManager::ResetValues()

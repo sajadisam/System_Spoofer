@@ -133,7 +133,7 @@ void Registry::GrabValues() noexcept {
         if (error == ERROR_SUCCESS)
             m_Values.insert(
                     {nameBuffer,
-                     std::make_shared<RegistryValue>(m_Key, nameBuffer, type, m_RelativePath, m_Save)});
+                     std::make_shared<RegistryValue>(m_Key, nameBuffer, type, m_Save)});
         else if (error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS) {
             std::cout << "Error: " << error << "\n";
             return;
@@ -210,7 +210,7 @@ RegistryValue *Registry::CreateValue(const std::string &name) noexcept {
     if (error != ERROR_SUCCESS)
         return nullptr;
     m_Values.insert(
-            {name, std::make_shared<RegistryValue>(m_Key, name, REG_NONE, m_RelativePath, m_Save)});
+            {name, std::make_shared<RegistryValue>(m_Key, name, REG_NONE, m_Save)});
     return m_Values[name].get();
 }
 

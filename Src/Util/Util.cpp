@@ -14,3 +14,7 @@ std::vector<std::string> SegmentPhrase(const std::string &phrase, char splitter)
     }
     return data;
 }
+
+std::vector<int> StringToVector(const std::string &str) {
+    return std::vector<int>(str.begin(), str.end());
+}

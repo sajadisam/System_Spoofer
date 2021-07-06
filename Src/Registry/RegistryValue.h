@@ -2,13 +2,14 @@
 // Created by Xelian on 2021-06-18.
 //
 
+#define ENABLE_SET 1
+
 class RegistryValue
 {
 public:
 	RegistryValue(HKEY& key,
 				  const std::string& name,
 				  DWORD type,
-				  const std::string& path,
 				  nlohmann::json& saves);
 
 public:
@@ -42,12 +43,10 @@ private:
 	std::vector<int> ReadBinaryAsInt();
 	std::vector<BYTE> ReadBinaryAsByte();
 	std::string ReadString();
-	std::string ReadMultiString();
 
 private:
 	HKEY& m_Key;
 	std::string m_Name;
-	std::string m_Path;
 	DWORD m_Type;
 	nlohmann::json& m_Saves;
 	nlohmann::json m_Value;
@@ -56,14 +55,14 @@ private:
 template <typename Type>
 Type RegistryValue::Value()
 {
-	if(!this && m_Type == REG_NONE)
+    if(!this)
+        return Type{};
+
+	if(m_Type == REG_NONE)
 		return Type{};
 	try
 	{
 		if constexpr(std::is_same_v<Type, std::string>)
-			if(m_Type == REG_MULTI_SZ)
-				return ReadMultiString();
-			else
 				return ReadString();
 
 		if constexpr(std::is_same_v<Type, const char*>)

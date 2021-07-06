@@ -14,7 +14,14 @@
 
 int main()
 {
-	Spoof::SpoofMonitor();
+    spdlog::set_level(spdlog::level::trace);
+	Spoof::Initialize();
+    RegistryManager::SaveValues();
+    //while(true)
+    //    if(GetAsyncKeyState(VK_F3) & 1)
+    //        RegistryManager::ResetValues();
+    //    else if(GetAsyncKeyState(VK_F4) & 1)
+    //        break;
 	return 0;
 }
 
