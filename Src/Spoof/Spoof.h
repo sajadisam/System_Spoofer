@@ -15,8 +15,11 @@ public:
 	static void SpoofDisplay();
     static void SpoofGPU();
     static void SpoofDrives();
+    static void SpoofMac();
+    static void SpoofCPU();
+	static void SpoofBIOS();
+	static void SpoofWindows();
 private:
-    /* Monitor */
     static void SpoofEnumDisplay();
     static void SpoofEnumAudio();
     static void SpoofEnumHID();

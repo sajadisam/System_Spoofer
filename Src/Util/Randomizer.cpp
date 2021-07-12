@@ -17,9 +17,9 @@ int Randomizer::Integer(int min, int max)
 	return dist(engine);
 }
 
-static std::string buffer;
 std::string Randomizer::String(int length, int flags)
 {
+	std::string buffer;
 	buffer.resize(length);
 	std::string result;
 	if(flags & RandomStringFlags::ALLOW_NONE_CAPITALS)
@@ -41,14 +41,16 @@ std::string Randomizer::String(int length, int flags)
 	}
 	return buffer;
 }
+
 float Randomizer::Float(float min, float max)
 {
 	assert(max > min);
 	srand(Randomizer::Integer(INT32_MAX - INT16_MAX, INT32_MAX));
-	float random = ((float)rand()) / (float)RAND_MAX;
+	float random = ((float) rand()) / (float) RAND_MAX;
 	float range = max - min;
 	return (random * range) + min;
 }
+
 std::vector<BYTE> Randomizer::Binary(int length)
 {
 	std::vector<BYTE> buffer;
@@ -56,10 +58,11 @@ std::vector<BYTE> Randomizer::Binary(int length)
 	for(int i = 0; i < length; ++i)
 	{
 		const int& random = Integer(0, 255);
-		buffer[i] = *(BYTE*)&random;
+		buffer[i] = *(BYTE*) &random;
 	}
 	return buffer;
 }
+
 std::string Randomizer::DashedString(int charlength, int dashes, int flags)
 {
 	std::string buffer;

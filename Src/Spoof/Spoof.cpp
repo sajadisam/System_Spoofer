@@ -20,7 +20,9 @@ The current mac address can be spoofed easily from usermode by changing the Netw
 You can also retrieve the current mac address / adapter GUID with GetAdaptersInfo, GetAdaptersAddresses, or through NetBIOS(credits to H4x0rKAPPA for noticing that).
  */
 
-
+/*
+ * Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\WMI\Autologger
+ */
 
 void Spoof::Initialize()
 {
@@ -28,12 +30,16 @@ void Spoof::Initialize()
 	//SpoofEnumAudio();
 	//SpoofEnumHID();
 	//SpoofGPU();
-	SpoofDrives();
+	//SpoofDrives();
+	//SpoofMac();
+	//SpoofCPU();
+	//SpoofBIOS();
+	SpoofWindows();
 }
 
 void Spoof::SpoofDisplay()
 {
-	SpoofEnumDisplay();
+	//SpoofEnumDisplay();
 	//auto enumVideo = std::async(std::launch::async, SpoofEnumDisplay);
 	//enumVideo.get();
 }
@@ -136,15 +142,72 @@ void Spoof::SpoofDrives()
 				continue;
 			for(const auto& units : target->GetSubKeys())
 			{
+				Registry* unit = units.second.get();
 				const std::string& Identifier = Randomizer::String(20, ALLOW_CAPITALS | ALLOW_NUMBERS);
 				const std::string& SerialNumber = Randomizer::String(10, ALLOW_CAPITALS | ALLOW_NUMBERS);
-				Registry* unit = units.second.get();
 				unit->GetValue("Identifier")->Set(Identifier);
 				unit->GetValue("SerialNumber")->Set(SerialNumber);
 				unit->GetValue("InquiryData")->Set(StringToVector(Identifier));
 				unit->GetValue("DeviceIdentifierPage")->Set(Randomizer::Binary(15));
 			}
+		}
+}
+
+void Spoof::SpoofMac()
+{
+	Registry* mac = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318})");
+	if(!mac->Available())
+	{
+		std::cout << "Couldn't find mac address registry" << "\n";
+		return;
 	}
+	for(const auto& subkey : mac->GetSubKeys())
+	{
+		const auto networkAddress = subkey.second->GetValue("NetworkAddress");
+		if(networkAddress)
+		{
+			constexpr char acceptedStr[] = "26AE";  /* Mac address doesn't accept other than these letters */
+			std::string data;
+			data.resize(12);
+			for(int i = 0; i < 12; ++i)
+				data[i] = acceptedStr[Randomizer::Integer(0, 3)];
+			networkAddress->Set(data);
+			std::cout << "Spoofed network: " << subkey.second->GetValue("DriverDesc")->Value<std::string>() << "\n";
+		}
+	}
+
+}
+
+void Spoof::SpoofCPU()
+{
+
+}
+
+void Spoof::SpoofBIOS()
+{
+	/* HKEY_LOCAL_MACHINE\SYSTEM\HardwareConfig\{04a0a952-0cd9-11eb-b8c1-682be17c1907} */
+	Registry* bios = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\BIOS");
+	const std::string& BaseBoardProduct = bios->GetValue("BaseBoardProduct")->Value<std::string>();
+	const std::string& BaseBoardProductName = BaseBoardProduct.substr(0, BaseBoardProduct.find('('));
+
+	const std::string& SystemProductName = "MS-" + Randomizer::String(4, ALLOW_NUMBERS | ALLOW_CAPITALS);
+	const std::string& BIOSVersion = std::to_string(Randomizer::Integer(1, 9)) + "." + std::to_string(Randomizer::Integer(1, 99));
+	const std::string& SystemVersion = std::to_string(Randomizer::Integer(1, 9)) + "." + std::to_string(Randomizer::Integer(1, 99));
+	const std::string& BaseBoardProductMODIFIED = BaseBoardProductName + "(" + SystemProductName + ")";
+	const std::string& BaseBoardManufacturer = Randomizer::String(7, ALLOW_CAPITALS | ALLOW_NUMBERS);
+
+	bios->GetValue("BIOSVersion")->Set(BIOSVersion);
+	bios->GetValue("SystemVersion")->Set(SystemVersion);
+	bios->GetValue("SystemProductName")->Set(SystemProductName);
+	bios->GetValue("BaseBoardProduct")->Set(BaseBoardProductMODIFIED);
+	bios->GetValue("BaseBoardManufacturer")->Set(BaseBoardManufacturer);
+
+	Registry* bios2 = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\HardwareConfig\\{04a0a952-0cd9-11eb-b8c1-682be17c1907}");
+	bios2->GetValue("BIOSVersion")->Set(BIOSVersion);
+	bios2->GetValue("SystemVersion")->Set(SystemVersion);
+	bios2->GetValue("SystemProductName")->Set(SystemProductName);
+	bios2->GetValue("BaseBoardProduct")->Set(BaseBoardProductMODIFIED);
+	bios2->GetValue("BaseBoardManufacturer")->Set(BaseBoardManufacturer);
 }
 
 void Spoof::SpoofEnum(Registry* registry, const std::string& randomClassGUID)
@@ -160,4 +223,14 @@ void Spoof::SpoofEnum(Registry* registry, const std::string& randomClassGUID)
 	registry->GetValue("Driver")->Set(Driver);
 	registry->GetValue("ClassGUID")->Set(randomClassGUID);
 	registry->GetValue("ContainerID")->Set(ContainerID);
+}
+
+void Spoof::SpoofWindows()
+{
+	Registry* windows = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+	windows->GetValue("DigitalProductId")->Set(Randomizer::Binary(0xA0 * 2));
+	windows->GetValue("DigitalProductId4")->Set(Randomizer::Binary(0x4F8 * 2));
+	windows->GetValue("InstallDate")->Set(Randomizer::Integer(1623000000, 1623001747));
+	windows->GetValue("ProductId")->Set(Randomizer::DashedString(5, 3, ALLOW_NUMBERS | ALLOW_CAPITALS));
+	windows->GetValue("UBR")->Set(Randomizer::Integer(1000, 1099));
 }

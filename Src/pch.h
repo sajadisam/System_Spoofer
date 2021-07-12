@@ -2,6 +2,7 @@
 // Created by Xelian on 2021-06-18.
 //
 #pragma once
+
 #include <Windows.h>
 #include <exception>
 #include <vector>
@@ -29,6 +30,7 @@
 #include <accctrl.h>
 #include <aclapi.h>
 #include <future>
+#include <netcon.h>
 
 #include <json.hpp>
 #include "spdlog/spdlog.h"

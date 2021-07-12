@@ -4,6 +4,7 @@
 
 #include "Registry.h"
 #include "../Util/Util.h"
+#include <winreg.h>
 
 static BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege) {
     TOKEN_PRIVILEGES tp;
@@ -200,6 +201,7 @@ bool Registry::SetKeyName(const std::string &name) noexcept {
     const std::wstring &wOldName = converter.from_bytes(m_RelativePath);
     const std::wstring &wNewName = converter.from_bytes(name);
     LSTATUS error = RegRenameKey(m_Folder, wOldName.c_str(), wNewName.c_str());
+
     if (error != ERROR_SUCCESS)
         return false;
     return true;
