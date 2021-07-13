@@ -34,3 +34,5 @@
 
 #include <json.hpp>
 #include "spdlog/spdlog.h"
+
+#define PTRACE(...) printf(__VA_ARGS__);
