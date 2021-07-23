@@ -7,11 +7,7 @@
 class RegistryValue
 {
 public:
-	RegistryValue(HKEY& key,
-				  const std::string& name,
-				  DWORD type,
-				  nlohmann::json& saves);
-
+	RegistryValue(HKEY& key, const std::string& name, DWORD type, nlohmann::json& saves);
 public:
 	__forceinline const std::string& GetName() const
 	{
@@ -19,6 +15,7 @@ public:
 			return "NULL";
 		return this->m_Name;
 	}
+	
 	__forceinline DWORD GetType() const
 	{
 		return !this ? 0 : this->m_Type;
@@ -31,14 +28,12 @@ public:
 	void Set(const std::vector<BYTE>& binary);
 	void Set(int number);
 	void Delete();
-
-	template <typename Type>
+	template<typename Type>
 	Type Value();
 
 private:
 	void CheckKeyValue(LRESULT error);
 	DWORD GetBufferSize(const std::string& name);
-
 private:
 	std::vector<int> ReadBinaryAsInt();
 	std::vector<BYTE> ReadBinaryAsByte();
@@ -52,38 +47,36 @@ private:
 	nlohmann::json m_Value;
 };
 
-template <typename Type>
+template<typename Type>
 Type RegistryValue::Value()
 {
-    if(!this)
-        return Type{};
-
+	if(!this)
+		return Type{};
+	
 	if(m_Type == REG_NONE)
 		return Type{};
 	try
 	{
 		if constexpr(std::is_same_v<Type, std::string>)
-				return ReadString();
-
+			return ReadString();
+		
 		if constexpr(std::is_same_v<Type, const char*>)
 			return ReadString().c_str();
-
+		
 		if constexpr(std::is_same_v<Type, std::remove_const<char*>::type>)
 			return const_cast<char*>(ReadString().c_str());
-
+		
 		if constexpr(std::is_same_v<Type, std::vector<int>>)
 			return ReadBinaryAsInt();
-
+		
 		if constexpr(std::is_same_v<Type, std::vector<BYTE>>)
 			return ReadBinaryAsByte();
-
+		
 		Type buffer;
 		DWORD size = GetBufferSize(m_Name.c_str());
-		CheckKeyValue(
-			RegQueryValueEx(m_Key, m_Name.c_str(), NULL, &m_Type, (LPBYTE)&buffer, &size));
+		CheckKeyValue(RegQueryValueEx(m_Key, m_Name.c_str(), NULL, &m_Type, (LPBYTE)&buffer, &size));
 		return buffer;
-	}
-	catch(std::exception& e)
+	} catch(std::exception& e)
 	{
 		std::cout << "[ERROR READING] " << e.what() << "\n";
 		return Type{};

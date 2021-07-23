@@ -4,11 +4,7 @@
 
 enum RandomStringFlags
 {
-	NONE,
-	ALLOW_NONE_CAPITALS = 1 << 1,
-	ALLOW_CAPITALS = 1 << 2,
-	ALLOW_SYMBOLS = 1 << 3,
-	ALLOW_NUMBERS = 1 << 4
+	NONE, ALLOW_NONE_CAPITALS = 1 << 1, ALLOW_CAPITALS = 1 << 2, ALLOW_SYMBOLS = 1 << 3, ALLOW_NUMBERS = 1 << 4
 };
 
 class Randomizer
@@ -19,10 +15,4 @@ public:
 	static std::string String(int length, int flags = NONE);
 	static std::string DashedString(int charlength, int dashes, int flags = NONE);
 	static std::vector<BYTE> Binary(int length);
-
-private:
-	static const std::string s_SmallAlphabets;
-	static const std::string s_BigAlphabets;
-	static const std::string s_Symbols;
-	static const std::string s_Numbers;
 };

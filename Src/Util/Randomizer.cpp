@@ -3,10 +3,10 @@
 //
 #include "Randomizer.h"
 
-const std::string Randomizer::s_SmallAlphabets = "qwertyuiopasdfghjklzxcvbnm";
-const std::string Randomizer::s_BigAlphabets = "QWERTYUIOPASDFGHJKLZXCVBNM";
-const std::string Randomizer::s_Symbols = "!\"#%&/()=?@{[]}\\|<>";
-const std::string Randomizer::s_Numbers = "123456789";
+static const std::string s_SmallAlphabets = "qwertyuiopasdfghjklzxcvbnm";
+static const std::string s_BigAlphabets = "QWERTYUIOPASDFGHJKLZXCVBNM";
+static const std::string s_Symbols = "!\"#%&/()=?@{[]}\\|<>";
+static const std::string s_Numbers = "123456789";
 
 int Randomizer::Integer(int min, int max)
 {
@@ -30,10 +30,10 @@ std::string Randomizer::String(int length, int flags)
 		result += s_Symbols;
 	if(flags & RandomStringFlags::ALLOW_NUMBERS)
 		result += s_Numbers;
-
+	
 	if(result.empty())
 		return result;
-
+	
 	for(int i = 0; i < length; ++i)
 	{
 		const int& random = Integer(0, result.size() - 1);
@@ -46,7 +46,7 @@ float Randomizer::Float(float min, float max)
 {
 	assert(max > min);
 	srand(Randomizer::Integer(INT32_MAX - INT16_MAX, INT32_MAX));
-	float random = ((float) rand()) / (float) RAND_MAX;
+	float random = ((float)rand()) / (float)RAND_MAX;
 	float range = max - min;
 	return (random * range) + min;
 }
@@ -58,7 +58,7 @@ std::vector<BYTE> Randomizer::Binary(int length)
 	for(int i = 0; i < length; ++i)
 	{
 		const int& random = Integer(0, 255);
-		buffer[i] = *(BYTE*) &random;
+		buffer[i] = *(BYTE*)&random;
 	}
 	return buffer;
 }
@@ -70,6 +70,6 @@ std::string Randomizer::DashedString(int charlength, int dashes, int flags)
 	buffer += String(charlength, flags);
 	for(int i = 0; i < dashes; ++i)
 		buffer += "-" + String(charlength, flags);
-
+	
 	return buffer;
 }

@@ -3,20 +3,22 @@
 //
 #include "Util.h"
 
-std::vector<std::string> SegmentPhrase(const std::string &phrase, char splitter)
+std::vector<std::string> SegmentPhrase(const std::string& phrase, char splitter)
 {
-    std::vector<std::string> data;
-    std::stringstream ss(phrase);
-    while (ss.good()) {
-        std::string substr;
-        getline(ss, substr, splitter);
-        data.push_back(substr);
-    }
-    return data;
+	std::vector<std::string> data;
+	std::stringstream ss(phrase);
+	while(ss.good())
+	{
+		std::string substr;
+		getline(ss, substr, splitter);
+		data.push_back(substr);
+	}
+	return data;
 }
 
-std::vector<int> StringToVector(const std::string &str) {
-    return std::vector<int>(str.begin(), str.end());
+std::vector<int> StringToVector(const std::string& str)
+{
+	return std::vector<int>(str.begin(), str.end());
 }
 
 /*
@@ -35,14 +37,14 @@ HRESULT DisableEnableConnections(BOOL bEnable)
         */
 		IEnumNetConnection* pEnumNetConnection;
 		pNetConnectionManager->EnumConnections(NCME_DEFAULT, &pEnumNetConnection);
-
+		
 		ULONG ulCount = 0;
 		BOOL fFound = FALSE;
-
+		
 		hr = HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND);
-
+		
 		HRESULT hrT = S_OK;
-
+		
 		/*
         * Enumurate through the list of adapters on the system and look for the one we want
         * NOTE: To include per-user RAS connections in the list, you need to set the COM
@@ -53,19 +55,19 @@ HRESULT DisableEnableConnections(BOOL bEnable)
 		{
 			NETCON_PROPERTIES* pProps = NULL;
 			INetConnection* pConn;
-
+			
 			/*
 			* Find the next (or first connection)
             */
 			hrT = pEnumNetConnection->Next(1, &pConn, &ulCount);
-
+			
 			if(SUCCEEDED(hrT) && 1 == ulCount)
 			{
 				/*
 				Get the connection properties
 				*/
 				hrT = pConn->GetProperties(&pProps);
-
+				
 				if(S_OK == hrT)
 				{
 					if(bEnable)
@@ -77,8 +79,8 @@ HRESULT DisableEnableConnections(BOOL bEnable)
 						PTRACE("Disabling adapter: %S\n", pProps->pszwName);
 						hr = pConn->Disconnect();
 					}
-
-
+					
+					
 					CoTaskMemFree(pProps->pszwName);
 					CoTaskMemFree(pProps->pszwDeviceName);
 					CoTaskMemFree(pProps);
@@ -87,15 +89,15 @@ HRESULT DisableEnableConnections(BOOL bEnable)
 				pConn = NULL;
 			}
 		} while(SUCCEEDED(hrT) && 1 == ulCount && !fFound);
-
+		
 		if(FAILED(hrT))
 			hr = hrT;
 		pEnumNetConnection->Release();
 	}
-
+	
 	if(FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_RETRY))
 		PTRACE("Could not enable or disable connection (0x%08x)\r\n", hr);
-
+	
 	pNetConnectionManager->Release();
 	CoUninitialize();
 	return hr;

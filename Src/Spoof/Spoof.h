@@ -10,19 +10,19 @@ class Spoof
 public:
 	Spoof() = delete;
 	~Spoof() = delete;
+
 public:
-    static void Initialize();
-	static void SpoofDisplay();
-    static void SpoofGPU();
-    static void SpoofDrives();
-    static void SpoofMac();
-    static void SpoofCPU();
+	static void Initialize();
+	static void SpoofGPU();
+	static void SpoofDrives();
+	static bool SpoofMac();
+	static void SpoofCPU();
 	static void SpoofBIOS();
 	static void SpoofWindows();
-private:
-    static void SpoofEnumDisplay();
-    static void SpoofEnumAudio();
-    static void SpoofEnumHID();
-private:
-    static void SpoofEnum(Registry* registry,const std::string& randomClassGUID);
+	static void SpoofMisc();
+	static void SpoofEnumDisplay();
+	static void SpoofEnumAudio();
+	static void SpoofEnumHID();
+	static void SpoofEnumPCI();
+	static void SpoofRust();
 };

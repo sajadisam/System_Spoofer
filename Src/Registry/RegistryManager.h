@@ -1,9 +1,9 @@
 //
 // Created by Xelian on 2021-06-24.
 //
-
 #pragma once
-#include "Registry.h"
+
+class Registry;
 
 class RegistryManager
 {
