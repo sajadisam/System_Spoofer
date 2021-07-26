@@ -6,7 +6,10 @@
 #include "../Util/Util.h"
 #include <winreg.h>
 
-static BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "err_typecheck_invalid_operands"
+
+static bool SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivilege)
 {
 	TOKEN_PRIVILEGES tp;
 	LUID luid;
@@ -26,17 +29,15 @@ static BOOL SetPrivilege(HANDLE hToken, LPCTSTR lpszPrivilege, BOOL bEnablePrivi
 	if(GetLastError() == ERROR_NOT_ALL_ASSIGNED)
 		throw std::runtime_error("The token does not have the specified privilege");
 	
-	return TRUE;
+	return true;
 }
 
 Registry::Registry(const std::string& path) : m_Path(path), m_Loaded(false), m_LoadedKeys(false), m_LoadedValues(false)
 {
-	
 	try
 	{
 		if(m_Path.empty())
 			throw std::runtime_error("Path is empty");
-		
 		m_RelativePath = FormatPath();
 		m_Folder = SetFolder();
 		if(!m_Folder)
@@ -44,7 +45,7 @@ Registry::Registry(const std::string& path) : m_Path(path), m_Loaded(false), m_L
 		Open();
 	} catch(const std::exception& e)
 	{
-		std::cout << "[ERROR] " << e.what() << "\n";
+		EMBER_ERROR("{0}", e.what());
 		return;
 	}
 	m_Loaded = true;
@@ -52,21 +53,22 @@ Registry::Registry(const std::string& path) : m_Path(path), m_Loaded(false), m_L
 
 Registry::~Registry()
 {
-	RegCloseKey(m_Key);
+	if(m_Loaded)
+		RegCloseKey(m_Key);
 }
 
 void Registry::Open()
 {
 	if(!this)
 		return;
-	LSTATUS openResult;
-	openResult = RegOpenKeyEx(m_Folder, m_RelativePath.c_str(), 0, KEY_ALL_ACCESS, &m_Key);
+	LSTATUS openResult = RegOpenKeyEx(m_Folder, m_RelativePath.c_str(), 0, KEY_ALL_ACCESS, &m_Key);
 	if(openResult == ERROR_ACCESS_DENIED)
 	{
-		//std::cout << "Taking ownership" << "\n";
 		TakeOwnership();
 		openResult = RegOpenKeyEx(m_Folder, m_RelativePath.c_str(), 0, KEY_ALL_ACCESS, &m_Key);
 	}
+	if(openResult == ERROR_FILE_NOT_FOUND)
+		openResult = RegOpenKeyEx(m_Folder, m_RelativePath.c_str(), 0, KEY_WOW64_64KEY | KEY_ALL_ACCESS, &m_Key);
 	
 	if(openResult != ERROR_SUCCESS)
 	{
@@ -77,7 +79,7 @@ void Registry::Open()
 			case ERROR_ACCESS_DENIED:
 				throw std::runtime_error("ACCESS_DENIED for key: " + m_Path);
 			default:
-				throw std::runtime_error("Failed opening key: " + m_Path + " ERROR: " + std::to_string(openResult));
+				throw std::runtime_error("Failed opening key: " + m_Path + " ERROR: " + std::to_string(openResult) + ". " + m_RelativePath);
 		}
 	}
 }
@@ -107,23 +109,23 @@ HKEY Registry::SetFolder() noexcept
 		return NULL;
 	
 	std::vector<std::string> segmentations = SegmentPhrase(m_Path, '\\');
-	const std::string& folder = segmentations[1];
+	m_StringFolder = segmentations[1];
 	m_Save["Path"] = m_Path;
-	m_Save["Folder"] = folder;
+	m_Save["Folder"] = m_StringFolder;
 	if(m_Path.back() == '\\')
 		m_Name = segmentations[segmentations.size() - 2];
 	else
 		m_Name = segmentations.back();
 	
-	if(folder == "HKEY_CLASSES_ROOT")
+	if(m_StringFolder == "HKEY_CLASSES_ROOT")
 		return HKEY_CLASSES_ROOT;
-	if(folder == "HKEY_CURRENT_USER")
+	if(m_StringFolder == "HKEY_CURRENT_USER")
 		return HKEY_CURRENT_USER;
-	if(folder == "HKEY_LOCAL_MACHINE")
+	if(m_StringFolder == "HKEY_LOCAL_MACHINE")
 		return HKEY_LOCAL_MACHINE;
-	if(folder == "HKEY_USERS")
+	if(m_StringFolder == "HKEY_USERS")
 		return HKEY_USERS;
-	if(folder == "HKEY_CURRENT_CONFIG")
+	if(m_StringFolder == "HKEY_CURRENT_CONFIG")
 		return HKEY_CURRENT_CONFIG;
 	return NULL;
 }
@@ -147,7 +149,7 @@ void Registry::GrabValues() noexcept
 			m_Values.insert({nameBuffer, std::make_shared<RegistryValue>(m_Key, nameBuffer, type, m_Save)});
 		else if(error != ERROR_SUCCESS && error != ERROR_NO_MORE_ITEMS)
 		{
-			std::cout << "Error: " << error << "\n";
+			EMBER_ERROR("{0}", error);
 			return;
 		}
 	} while(error != ERROR_NO_MORE_ITEMS);
@@ -175,10 +177,8 @@ Registry* Registry::GetSubKey(const std::string& name) noexcept
 {
 	if(!Available())
 		return nullptr;
-	
 	if(!m_LoadedKeys)
 		GrabKeys();
-	
 	auto it = m_SubKeys.find(name);
 	if(it != m_SubKeys.end())
 		return it->second.get();
@@ -190,6 +190,7 @@ RegistryValue* Registry::GetValue(const std::string& name) noexcept
 {
 	if(!Available())
 		return nullptr;
+	
 	if(!m_LoadedValues)
 		GrabValues();
 	
@@ -212,25 +213,32 @@ bool Registry::CreateKey() noexcept
 
 bool Registry::Rename(const std::string& name) noexcept
 {
+#if ENABLE_SET
 	if(!Available())
 		return false;
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 	const std::wstring& wOldName = converter.from_bytes(m_RelativePath);
 	const std::wstring& wNewName = converter.from_bytes(name);
 	LSTATUS error = RegRenameKey(m_Folder, wOldName.c_str(), wNewName.c_str());
-	
 	if(error != ERROR_SUCCESS)
 		return false;
 	return true;
+#else
+	return false;
+#endif
 }
 
 RegistryValue* Registry::CreateValue(const std::string& name) noexcept
 {
+#if ENABLE_SET
 	LSTATUS error = RegSetValueExA(m_Key, name.c_str(), 0, 0, nullptr, 0);
 	if(error != ERROR_SUCCESS)
 		return nullptr;
 	m_Values.insert({name, std::make_shared<RegistryValue>(m_Key, name, REG_NONE, m_Save)});
 	return m_Values[name].get();
+#else
+	return nullptr;
+#endif
 }
 
 
@@ -307,7 +315,7 @@ void Registry::TakeOwnership()
 			throw std::runtime_error("Failed setting DACL after taking ownership");
 	} catch(const std::exception& e)
 	{
-		std::cout << "[SETTING PERMISSION]" << e.what() << "\n";
+		std::cout << "[SETTING PERMISSION]" << e.what() << std::endl;
 	}
 	if(pSIDAdmin)
 		FreeSid(pSIDAdmin);
@@ -319,11 +327,12 @@ void Registry::TakeOwnership()
 		CloseHandle(hToken);
 }
 
-bool Registry::Delete(const std::string& name)
+bool Registry::Delete(const std::string& name) noexcept
 {
+#if ENABLE_DELETE
 	if(!this && !m_Loaded)
 		return false;
-	// Deletes subkeys aswell, they have to be done manually
+	
 	Registry temp(m_Path + "\\" + name);
 	if(!temp.m_Loaded)
 		return false;
@@ -334,5 +343,13 @@ bool Registry::Delete(const std::string& name)
 	LSTATUS result = RegDeleteKeyA(m_Key, name.c_str());
 	if(result != ERROR_SUCCESS)
 		return false;
+	
 	return true;
+#else
+	return false;
+#endif
+	
 }
+
+
+#pragma clang diagnostic pop

@@ -64,8 +64,10 @@ std::vector<int> RegistryValue::ReadBinaryAsInt()
 
 void RegistryValue::Delete()
 {
+#if ENABLE_DELETE
 	if(this)
 		CheckKeyValue(RegDeleteValueA(m_Key, m_Name.c_str()));
+#endif
 }
 
 void RegistryValue::Set(int type, void* buffer, int size)
@@ -75,7 +77,10 @@ void RegistryValue::Set(int type, void* buffer, int size)
 		return;
 	LSTATUS error = RegSetValueExA(m_Key, m_Name.c_str(), NULL, type, (BYTE*)buffer, size);
 	if(m_Type == REG_NONE || error != ERROR_SUCCESS)
+	{
+		EMBER_WARN("Failed to set: {0}", m_Name);
 		return;
+	}
 	m_Value["Name"] = m_Name;
 	m_Value["Type"] = (int)m_Type;
 	m_Saves["Values"] += m_Value;
@@ -87,6 +92,7 @@ void RegistryValue::Set(std::string str)
 #if ENABLE_SET
 	if(!this)
 		return;
+	
 	switch(m_Type)
 	{
 		case REG_NONE:
@@ -106,6 +112,8 @@ void RegistryValue::Set(std::string str)
 void RegistryValue::Set(const std::vector<int>& binary)
 {
 #if ENABLE_SET
+	if(!this)
+		return;
 	if(m_Type != REG_BINARY && m_Type != REG_NONE)
 		return;
 	m_Value["Value"] += Value<std::vector<int>>();
@@ -129,6 +137,9 @@ void RegistryValue::Set(const std::vector<BYTE>& binary)
 void RegistryValue::Set(int number)
 {
 #if ENABLE_SET
+	if(!this)
+		return;
+	
 	if(m_Type != REG_DWORD && m_Type != REG_NONE)
 		return;
 	m_Value["Value"] += Value<int>();

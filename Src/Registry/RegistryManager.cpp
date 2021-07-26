@@ -12,7 +12,7 @@ static std::string ReadFile(const std::string& name)
 	std::string buffer;
 	std::stringstream ss;
 	while(std::getline(f, buffer))
-		ss << buffer << "\n";
+		ss << buffer << std::endl;
 	f.close();
 	return ss.str();
 }

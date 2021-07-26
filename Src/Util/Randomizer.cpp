@@ -73,3 +73,8 @@ std::string Randomizer::DashedString(int charlength, int dashes, int flags)
 	
 	return buffer;
 }
+
+std::string Randomizer::Date()
+{
+	return (std::to_string(Randomizer::Integer(1, 27)) + "-" + std::to_string(Randomizer::Integer(1, 11)) + std::to_string(Randomizer::Integer(2010, 2021)));
+}

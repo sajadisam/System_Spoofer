@@ -20,24 +20,21 @@ public:
 public:
 	__forceinline ValuesCollection& GetValues() noexcept
 	{
-		if(this)
+		if(Available())
 			GrabValues();
 		return this->m_Values;
 	}
 	
 	__forceinline KeysCollection& GetSubKeys() noexcept
 	{
-		if(this)
+		if(Available())
 			GrabKeys();
-		
 		return this->m_SubKeys;
 	}
 	
 	__forceinline bool Available() noexcept
 	{
-		if(this && m_Loaded)
-			return true;
-		return false;
+		return (this && m_Loaded);
 	}
 
 public:
@@ -45,7 +42,7 @@ public:
 	Registry* GetSubKey(const std::string& name) noexcept;
 	bool CreateKey() noexcept;
 	bool Rename(const std::string& name) noexcept;
-	bool Delete(const std::string& name);
+	bool Delete(const std::string& name) noexcept;
 	RegistryValue* CreateValue(const std::string& name) noexcept;
 	nlohmann::json m_Save;
 private:
@@ -57,14 +54,15 @@ private:
 	void TakeOwnership();
 
 private:
-	bool m_Loaded;
-	bool m_LoadedKeys;
-	bool m_LoadedValues;
-	HKEY m_Key;
-	HKEY m_Folder;
-	std::string m_Name;
-	std::string m_Path;
-	std::string m_RelativePath;
-	ValuesCollection m_Values;
-	KeysCollection m_SubKeys;
+	bool m_Loaded = false;
+	bool m_LoadedKeys = false;
+	bool m_LoadedValues = false;
+	HKEY m_Key = 0;
+	HKEY m_Folder = 0;
+	std::string m_Name = "";
+	std::string m_Path = "";
+	std::string m_RelativePath = "";
+	std::string  m_StringFolder = "";
+	ValuesCollection m_Values = ValuesCollection();
+	KeysCollection m_SubKeys = KeysCollection();
 };

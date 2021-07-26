@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../Registry/Registry.h"
-
 class Spoof
 {
 public:
@@ -25,4 +24,6 @@ public:
 	static void SpoofEnumHID();
 	static void SpoofEnumPCI();
 	static void SpoofRust();
+	static std::string GetSerialFolder();
+private:
 };

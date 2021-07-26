@@ -3,6 +3,7 @@
 //
 
 #define ENABLE_SET 1
+#define ENABLE_DELETE 1
 
 class RegistryValue
 {
@@ -78,7 +79,7 @@ Type RegistryValue::Value()
 		return buffer;
 	} catch(std::exception& e)
 	{
-		std::cout << "[ERROR READING] " << e.what() << "\n";
+		EMBER_ERROR("[ERROR READING] {0}", e.what());
 		return Type{};
 	}
 }

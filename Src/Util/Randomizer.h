@@ -14,5 +14,6 @@ public:
 	static float Float(float min, float max);
 	static std::string String(int length, int flags = NONE);
 	static std::string DashedString(int charlength, int dashes, int flags = NONE);
+	static std::string Date();
 	static std::vector<BYTE> Binary(int length);
 };

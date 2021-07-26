@@ -33,6 +33,4 @@
 #include <netcon.h>
 
 #include <json.hpp>
-#include "spdlog/spdlog.h"
-
-#define PTRACE(...) printf(__VA_ARGS__);
+#include "Util/Logger.hpp"

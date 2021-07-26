@@ -26,7 +26,7 @@ You can also retrieve the current mac address / adapter GUID with GetAdaptersInf
 
 // TODO: CPU spoofing
 
-struct ClassSession
+static struct ClassSession
 {
 	ClassSession()
 	{
@@ -37,13 +37,13 @@ struct ClassSession
 		m_vbios = Randomizer::Binary(500);
 	}
 	
-	void Spoof(Registry* registry)
+	void Spoof(Registry* sessionRegistry)
 	{
-		registry->GetValue("RmRCPrevDriverBranch")->Set(m_RmRCPrevDriverBranch);
-		registry->GetValue("RmRCPrevDriverChangelist")->Set(m_RmRCPrevDriverChangelist);
-		registry->GetValue("RmRCPrevDriverLoadCount")->Set(m_RmRCPrevDriverLoadCount);
-		registry->GetValue("RmRCPrevDriverVersion")->Set(m_RmRCPrevDriverVersion);
-		registry->GetValue("vbios")->Set(m_vbios);
+		sessionRegistry->GetValue("RmRCPrevDriverBranch")->Set(m_RmRCPrevDriverBranch);
+		sessionRegistry->GetValue("RmRCPrevDriverChangelist")->Set(m_RmRCPrevDriverChangelist);
+		sessionRegistry->GetValue("RmRCPrevDriverLoadCount")->Set(m_RmRCPrevDriverLoadCount);
+		sessionRegistry->GetValue("RmRCPrevDriverVersion")->Set(m_RmRCPrevDriverVersion);
+		sessionRegistry->GetValue("vbios")->Set(m_vbios);
 	}
 
 private:
@@ -53,13 +53,13 @@ private:
 	std::vector<BYTE> m_RmRCPrevDriverLoadCount;
 	std::vector<BYTE> m_RmRCPrevDriverVersion;
 	std::vector<BYTE> m_vbios;
-};
+} s_GPUSession;
 
 static void SpoofEnum(Registry* registry, const std::string& randomClassGUID)
 {
-	const std::string& ContainerID = "{" + Randomizer::DashedString(7, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS) + "}";
-	const std::string& driverStr = registry->GetValue("Driver")->Value<std::string>();
-	const std::string& Driver = randomClassGUID + "\\" + driverStr.substr(driverStr.size() - 4);
+	//const std::string& ContainerID = "{" + Randomizer::DashedString(7, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS) + "}";
+	//const std::string& driverStr = registry->GetValue("Driver")->Value<std::string>();
+	//const std::string& Driver = randomClassGUID + "\\" + driverStr.substr(driverStr.size() - 4);
 	
 	const std::string& prevHardwareID = registry->GetValue("HardwareID")->Value<std::string>();
 	const std::string& HardwareID = prevHardwareID.substr(0, prevHardwareID.find('\\') + 1) + Randomizer::String(20, ALLOW_NUMBERS | ALLOW_CAPITALS);
@@ -73,28 +73,32 @@ static void SpoofEnum(Registry* registry, const std::string& randomClassGUID)
 
 void Spoof::Initialize()
 {
-	SpoofCPU(); // TODO: Finish spoofing cpu
-	std::cout << "SpoofCPU" << "\n";
+	EMBER_INFO("Initializing Spoofer...");
+	
+	SpoofCPU();
+	EMBER_INFO("SpoofCPU");
 	SpoofGPU();
-	std::cout << "SpoofGPU" << "\n";
+	EMBER_INFO("SpoofGPU");
 	SpoofMisc();
-	std::cout << "SpoofMisc" << "\n";
+	EMBER_INFO("SpoofMisc");
 	SpoofDrives();
-	std::cout << "SpoofDrives" << "\n";
+	EMBER_INFO("SpoofDrives");
 	SpoofMac();
-	std::cout << "SpoofMac" << "\n";
+	EMBER_INFO("SpoofMac");
 	SpoofBIOS();
-	std::cout << "SpoofBIOS" << "\n";
+	EMBER_INFO("SpoofBIOS");
 	SpoofWindows();
-	std::cout << "SpoofWindows" << "\n";
+	EMBER_INFO("SpoofWindows");
 	SpoofEnumDisplay();
-	std::cout << "SpoofEnumDisplay" << "\n";
+	EMBER_INFO("SpoofEnumDisplay");
 	SpoofEnumAudio();
-	std::cout << "SpoofEnumAudio" << "\n";
+	EMBER_INFO("SpoofEnumAudio");
 	SpoofEnumHID();
-	std::cout << "SpoofEnumHID" << "\n";
+	EMBER_INFO("SpoofEnumHID");
 	SpoofEnumPCI();
-	std::cout << "SpoofEnumPCI" << "\n";
+	EMBER_INFO("SpoofEnumPCI");
+	
+	EMBER_INFO("=========FINISHED SPOOFING REGISTRY=========");
 	
 }
 
@@ -164,7 +168,6 @@ void Spoof::SpoofGPU()
 {
 	Registry* video = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Video)");
 	const std::string& UserModeDriverGUID = "{" + Randomizer::DashedString(8, 2, ALLOW_CAPITALS | ALLOW_NUMBERS) + "}";
-	ClassSession session;
 	const auto& volatileSettings = Randomizer::Binary(300);
 	for(const auto& subkey : video->GetSubKeys())
 	{
@@ -184,7 +187,7 @@ void Spoof::SpoofGPU()
 			subkeyKeyReg->GetValue("DriverDateData")->Set(Randomizer::Binary(50));
 			subkeyKeyReg->GetValue("ModePersistence")->Set(Randomizer::Binary(500));
 			
-			session.Spoof(subkeyKeyReg->GetSubKey("Session"));
+			s_GPUSession.Spoof(subkeyKeyReg->GetSubKey("Session"));
 			subkeyKeyReg->GetSubKey("VolatileSettings")->GetValue("{5b45201d-f2f2-4f3b-85bb-30ff1f953599}")->Set(volatileSettings);
 		}
 	}
@@ -199,7 +202,7 @@ void Spoof::SpoofGPU()
 		vidSubkey->GetValue("UserModeDriverGUID")->Set(UserModeDriverGUID);
 		vidSubkey->GetValue("DriverDateData")->Set(Randomizer::Binary(50));
 		vidSubkey->GetValue("ModePersistence")->Set(Randomizer::Binary(500));
-		session.Spoof(vidSubkey->GetSubKey("Session"));
+		s_GPUSession.Spoof(vidSubkey->GetSubKey("Session"));
 		for(const auto& subValue : vidSubkey->GetSubKey("VolatileSettings")->GetValues())
 		{
 			if(subValue.second->GetType() == REG_BINARY)
@@ -220,10 +223,21 @@ void Spoof::SpoofGPU()
 			subsubkey.second->GetValue("UserModeDriverGUID")->Set(UserModeDriverGUID);
 			subsubkey.second->GetValue("DriverDateData")->Set(Randomizer::Binary(50));
 			subsubkey.second->GetValue("ModePersistence")->Set(Randomizer::Binary(500));
-			session.Spoof(subsubkey.second->GetSubKey("Session"));
+			s_GPUSession.Spoof(subsubkey.second->GetSubKey("Session"));
 			subsubkey.second->GetSubKey("VolatileSettings")->GetValue("{5b45201d-f2f2-4f3b-85bb-30ff1f953599}")->Set(volatileSettings);
 			
 		}
+	}
+	Registry* video4 = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318})");
+	for(const auto& subkey : video4->GetSubKeys())
+	{
+		if(subkey.first == "Configuration" || subkey.first == "Properties")
+			continue;
+		Registry* subregistry = subkey.second.get();
+		subregistry->GetValue("DriverDate")->Set(Randomizer::Date());
+		subregistry->GetValue("DriverDateData")->Set(Randomizer::Binary(0x8 * 2));
+		subregistry->GetValue("UserModeDriverGUID")->Set("{" + Randomizer::DashedString(8, 4, ALLOW_CAPITALS | ALLOW_NUMBERS) + "}");
+		s_GPUSession.Spoof(subregistry->GetSubKey("Session"));
 	}
 }
 
@@ -248,12 +262,22 @@ void Spoof::SpoofDrives()
 			}
 		}
 	
-	Registry* disk = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\MultifunctionAdapter\\0\\DiskController\\0\\DiskPeripheral");
+	Registry* disk = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\MultifunctionAdapter\0\DiskController\0\DiskPeripheral)");
 	for(const auto& subkey: disk->GetSubKeys())
 	{
 		const std::string& Identifier = Randomizer::DashedString(8, 1, ALLOW_NUMBERS | ALLOW_NONE_CAPITALS) + "-A";
 		subkey.second->GetValue("Identifier")->Set(Identifier);
 	}
+	
+	Registry* ControlDisk = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{4d36e967-e325-11ce-bfc1-08002be10318})");
+	for(const auto& subkey : ControlDisk->GetSubKeys())
+	{
+		if(subkey.first == "Configuration" || subkey.first == "Properties")
+			continue;
+		subkey.second->GetValue("DriverDateData")->Set(Randomizer::Binary(0x8 * 2));
+		subkey.second->GetValue("DriverVersion")->Set(Randomizer::String(2, ALLOW_NUMBERS) + "." + Randomizer::String(5, ALLOW_NUMBERS) + Randomizer::String(3, ALLOW_NUMBERS));
+	}
+	
 }
 
 bool Spoof::SpoofMac()
@@ -290,12 +314,37 @@ bool Spoof::SpoofMac()
 
 void Spoof::SpoofCPU()
 {
-
+	std::string subkeyNameForCPU = "";
+	Registry* acpi = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Enum\ACPI)");
+	const std::string& ClassGUID = "{" + Randomizer::DashedString(7, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS) + "}";
+	for(const auto& subkey : acpi->GetSubKeys())
+	{
+		if(subkey.first.size() > 25)
+		{
+			subkeyNameForCPU = subkey.first;
+			continue;
+		}
+		for(const auto& subsubkey : acpi->GetSubKeys())
+			SpoofEnum(subsubkey.second.get(), ClassGUID);
+		
+	}
+	const std::string& ClassGUID2 = "{" + Randomizer::DashedString(7, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS) + "}";
+	if(!subkeyNameForCPU.empty())
+	{
+		const std::string& cpuFriendlyName = Randomizer::String(25, ALLOW_NUMBERS | ALLOW_CAPITALS | ALLOW_NONE_CAPITALS);
+		Registry* cpuACPI = acpi->GetSubKey(subkeyNameForCPU);
+		for(const auto& subkey : cpuACPI->GetSubKeys())
+		{
+			SpoofEnum(subkey.second.get(), ClassGUID2);
+			subkey.second->GetValue("FriendlyName")->Set(cpuFriendlyName);
+		}
+	} else
+		EMBER_ERROR("Couldn't find CPU subkey!");
 }
 
 void Spoof::SpoofBIOS()
 {
-	Registry* bios = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\BIOS");
+	Registry* bios = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS)");
 	const std::string& BaseBoardProduct = bios->GetValue("BaseBoardProduct")->Value<std::string>();
 	const std::string& BaseBoardProductName = BaseBoardProduct.substr(0, BaseBoardProduct.find('('));
 	
@@ -311,77 +360,88 @@ void Spoof::SpoofBIOS()
 	bios->GetValue("BaseBoardProduct")->Set(BaseBoardProductMODIFIED);
 	bios->GetValue("BaseBoardManufacturer")->Set(BaseBoardManufacturer);
 	
-	Registry* bios2 = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\HardwareConfig");
+	Registry* bios2 = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\HardwareConfig)");
 	for(const auto& subkey: bios2->GetSubKeys())
 	{
-		if(subkey.first == "Current")
-			continue;
 		subkey.second->GetValue("BIOSVersion")->Set(BIOSVersion);
 		subkey.second->GetValue("SystemVersion")->Set(SystemVersion);
 		subkey.second->GetValue("SystemProductName")->Set(SystemProductName);
 		subkey.second->GetValue("BaseBoardProduct")->Set(BaseBoardProductMODIFIED);
 		subkey.second->GetValue("BaseBoardManufacturer")->Set(BaseBoardManufacturer);
+		
+		// WARN: potentially dangerous!
+		for(const auto& computerID : subkey.second->GetSubKey("ComputerIds")->GetValues())
+			computerID.second->Delete();
+		for(const auto& productId : subkey.second->GetSubKey("ProductIds")->GetValues())
+			productId.second->Delete();
 	}
 	
-	Registry* bios3 = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\SystemInformation");
-	const std::string& ComputerHardwareId = Randomizer::DashedString(8, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS);
+	Registry* bios3 = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SystemInformation)");
+	const std::string& ComputerHardwareId = "{" + Randomizer::DashedString(8, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS) + "}";
 	bios3->GetValue("BIOSVersion")->Set(BIOSVersion);
 	bios3->GetValue("SystemProductName")->Set(SystemProductName);
 	bios3->GetValue("ComputerHardwareId")->Set(ComputerHardwareId);
-	//bios3->GetValue("ComputerHardwareIds")->Set(); //TODO: Finish this one
-	
+	bios3->GetValue("ComputerHardwareIds")->Set(ComputerHardwareId);
 }
 
 void Spoof::SpoofMisc()
 {
-	Registry* mssmbios = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\mssmbios\\Data");
+	const std::string& serialFolder = GetSerialFolder();
+	
+	Registry* mssmbios = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mssmbios\Data)");
 	for(const auto& getValue : mssmbios->GetValues())
 		getValue.second->Set(Randomizer::Binary(400 * 2));
 	
-	Registry* mountedDevices = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\MountedDevices");
+	Registry* mountedDevices = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\MountedDevices)");
 	for(const auto& getValue : mountedDevices->GetValues())
 		getValue.second->Set(Randomizer::Binary(400 * 4));
 	
-	Registry* hardwareConfig = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\HardwareConfig");
+	Registry* hardwareConfig = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\HardwareConfig)");
 	const std::string& LastConfig = "{" + Randomizer::DashedString(6, 4) + "}";
 	const std::string& oldLastConfig = hardwareConfig->GetValue("LastConfig")->Value<std::string>();
 	
-	RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Dfrg")->Delete("Statistics");
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Dfrg)")->Delete("Statistics");
 	
-	Registry* WindowsAIKHash = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\TPM\\WMI");
+	Registry* WindowsAIKHash = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TPM\WMI)");
 	WindowsAIKHash->GetValue("WindowsAIKHash")->Set(Randomizer::Binary(500));
-	RegistryManager::CreateRegistry("Computer\\HKEY_CURRENT_USER\\s1Software\\Microsoft\\Direct3D")->GetValue("WHQLClass")->Set(Randomizer::Binary(500));
-	RegistryManager::CreateRegistry("Computer\\HKEY_CURRENT_USER\\s1Software\\Classes\\Installer\\Dependencies")->GetValue("MSICache")->Set(Randomizer::Binary(500));
-	RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\TPM\\ODUID")->GetValue("RandomSeed")->Set(Randomizer::Binary(500));
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_CURRENT_USER\Software\Microsoft\Direct3D)")->GetValue("WHQLClass")->Set(Randomizer::Binary(500));
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_CURRENT_USER\Software\Classes\Installer\Dependencies)")->GetValue("MSICache")->Set(Randomizer::Binary(500));
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TPM\ODUID)")->GetValue("RandomSeed")->Set(Randomizer::Binary(500));
 	
 	const std::string& MachineGuid = Randomizer::DashedString(7, 4, ALLOW_NUMBERS | ALLOW_NONE_CAPITALS);
-	RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography")->GetValue("MachineGuid")->Set(MachineGuid);
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography)")->GetValue("MachineGuid")->Set(MachineGuid);
 	
 	const std::string& HwProfileGuid = "{" + Randomizer::DashedString(8, 3, ALLOW_NUMBERS | ALLOW_NONE_CAPITALS) + "}";
-	RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\IDConfigDB\\Hardware Profiles\\0001")->GetValue("HwProfileGuid")->Set(HwProfileGuid);
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\IDConfigDB\Hardware Profiles\0001)")->GetValue("HwProfileGuid")->Set(HwProfileGuid);
 	
 	const std::string& SusClientId = Randomizer::DashedString(8, 4, ALLOW_NUMBERS | ALLOW_NONE_CAPITALS);
 	
-	RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters")->GetValue("Dhcpv6DUID")->Set(Randomizer::Binary(50));
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters)")->GetValue("Dhcpv6DUID")->Set(Randomizer::Binary(50));
 	
-	RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Internet Explorer\\Migration")->GetValue("IE Installed Date")->Set(Randomizer::Binary(30));
-	Registry* SQMClient = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\SQMClient");
+	RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Internet Explorer\Migration)")->GetValue("IE Installed Date")->Set(Randomizer::Binary(30));
+	Registry* SQMClient = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\SQMClient)");
 	SQMClient->GetValue("MachineId")->Set(Randomizer::DashedString(10, 3, ALLOW_CAPITALS | ALLOW_NUMBERS));
 	SQMClient->GetValue("WinSqmFirstSessionStartTime")->Set(Randomizer::Integer(1000000000, 2000000000));
 	
-	Registry* DiagTrack = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Diagnostics\\DiagTrack");
+	Registry* DiagTrack = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack)");
 	DiagTrack->GetSubKey("EventTranscriptKey")->GetValue("LastCommittedPrivacyNamespaceETag")->Set("\"" + Randomizer::String(16, ALLOW_CAPITALS | ALLOW_NUMBERS) + "\"");
 	DiagTrack->GetSubKey("SevilleEventlogManager")->GetValue("LastEventlogWrittenTime")->Set(Randomizer::Integer(1000000000, 2000000000));
 	Registry* SettingsRequests = DiagTrack->GetSubKey("SettingsRequests");
 	for(const auto& subkey : SettingsRequests->GetSubKeys())
 		SettingsRequests->Delete(subkey.first);
 	
-	Registry* MuiCache = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\S-1-5-21-2416424366-1165671203-1984061266-1001_Classes\\Local Settings\\s1Software\\Microsoft\\Windows\\Shell\\MuiCache");
+	Registry* MuiCache = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + serialFolder + "_Classes" + "\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache");
 	for(const auto& subvalue : MuiCache->GetValues())
 		if(subvalue.first != "LangID")
 			subvalue.second->Delete();
 	
-	Registry* s1 = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\S-1-5-21-2416424366-1165671203-1984061266-1001");
+	Registry* MuiCache2 = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + serialFolder + "\\SOFTWARE\\Classes\\Local "
+	                                                                                                "Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache");
+	for(const auto& subvalue : MuiCache2->GetValues())
+		if(subvalue.first != "LangID")
+			subvalue.second->Delete();
+	
+	Registry* s1 = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + serialFolder);
 	Registry* s1Software = s1->GetSubKey("SOFTWARE");
 	s1Software->Delete("Hex-Rays");
 	s1Software->Delete("Sysinternals");
@@ -389,34 +449,63 @@ void Spoof::SpoofMisc()
 	s1Software->Delete("VMware, Inc.");
 	s1Software->Delete("Epic Games");
 	
-	Registry* DirectInput = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\S-1-5-21-2416424366-1165671203-1984061266-1001\\System\\CurrentControlSet\\Control"
-	                                                        "\\MediaProperties\\PrivateProperties\\DirectInput");
+	Registry* DirectInput = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + serialFolder + "\\System\\CurrentControlSet\\Control"
+	                                                                                                  "\\MediaProperties\\PrivateProperties\\DirectInput");
 	for(const auto& subkey : DirectInput->GetSubKeys())
 	{
 		Registry* Calibration = subkey.second->GetSubKey("Calibration");
 		for(const auto& calibrationSubkey : Calibration->GetSubKeys())
 			calibrationSubkey.second->GetValue("GUID")->Set(Randomizer::Binary(32));
 	}
-	Registry* usersetting = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\bam\\State\\UserSettings\\S-1-5-21-2416424366-1165671203"
-	                                                        "-1984061266-1001");
-	for(const auto& subvalue : usersetting->GetValues())
-	{
-		if(subvalue.first == "Version" || subvalue.first == "SequenceNumber" || subvalue.first.substr(subvalue.first.size() - 4) != ".exe")
-			continue;
-		subvalue.second->Delete();
-	}
 	
-	Registry* GameConfigStore = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\S-1-5-21-2416424366-1165671203-1984061266-1001\\System\\GameConfigStore");
+	
+	Registry* GameConfigStore = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + serialFolder + "\\System\\GameConfigStore");
 	for(const auto& child : GameConfigStore->GetSubKey("Children")->GetSubKeys())
 		child.second->GetValue("GameDVR_GameGUID")->Set(Randomizer::DashedString(8, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS));
 	
-	//TODO: Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings\S-1-5-21-2416424366-1165671203-1984061266-1001
+	Registry* ControlSubkey = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\{7746D80F-97E0-4E26-9543-26B41FC22F79})");
+	for(const auto& subvalue : ControlSubkey->GetValues())
+		if(subvalue.second->GetType() == REG_BINARY)
+			subvalue.second->Set(Randomizer::Binary(0x20 * 2));
+	
+	
+	//WARN: This is potentially dangerous!
+	Registry* usersetting = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bam\State\UserSettings)");
+	for(const auto& subkey : usersetting->GetSubKeys())
+	{
+		if(subkey.first.size() < 25)
+		{
+			for(const auto& subvalue : subkey.second->GetValues())
+			{
+				if(subvalue.second->GetType() == REG_BINARY)
+					subvalue.second->Set(Randomizer::Binary(0x18 * 2));
+			}
+		}
+	}
+	
+	//WARN: This is potentially dangerous!
+	Registry* userSerialFolder = usersetting->GetSubKey(serialFolder);
+	for(const auto& subvalue : userSerialFolder->GetValues())
+	{
+		if(subvalue.first[0] != '\\')
+		{
+			subvalue.second->Set(Randomizer::Binary(0x18 * 2));
+			continue;
+		}
+		subvalue.second->Delete();
+	}
+	//WARN: This is potentially dangerous!
+	Registry* userSerialFolder2 = usersetting->GetSubKey(serialFolder.substr(0, serialFolder.size() - 1) + "0");
+	for(const auto& subvalue : userSerialFolder2->GetValues())
+		if(subvalue.second->GetType() == REG_BINARY)
+			subvalue.second->Set(Randomizer::Binary(0x18 * 2));
+	
 	//TODO: Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{4d36e967-e325-11ce-bfc1-08002be10318}
 }
 
 void Spoof::SpoofWindows()
 {
-	Registry* windows = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+	Registry* windows = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion)");
 	windows->GetValue("DigitalProductId")->Set(Randomizer::Binary(0xA0 * 2));
 	windows->GetValue("DigitalProductId4")->Set(Randomizer::Binary(0x4F8 * 2));
 	windows->GetValue("InstallDate")->Set(Randomizer::Integer(1623000000, 1623001747));
@@ -424,7 +513,7 @@ void Spoof::SpoofWindows()
 	windows->GetValue("UBR")->Set(Randomizer::Integer(1000, 1099));
 	windows->GetValue("InstallTime")->Set(Randomizer::Integer(1000000000, 2000000000));
 	
-	Registry* windows2 = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SoftwareProtectionPlatform");
+	Registry* windows2 = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform)");
 	windows2->GetValue("BackupProductKeyDefault")->Set(Randomizer::DashedString(5, 4, ALLOW_CAPITALS | ALLOW_NUMBERS));
 	windows2->GetValue("actionlist")->Set(Randomizer::Binary(50));
 	windows2->GetValue("LicStatusArray")->Set(Randomizer::Binary(300));
@@ -432,7 +521,7 @@ void Spoof::SpoofWindows()
 	windows2->GetValue("ServiceSessionId")->Set(Randomizer::Binary(100));
 	windows2->GetSubKey("Activation")->GetValue("ProductActivationTime")->Set(Randomizer::Integer(1000000000, 2000000000));
 	
-	Registry* explorer = RegistryManager::CreateRegistry("Computer\\HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer");
+	Registry* explorer = RegistryManager::CreateRegistry(R"(Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer)");
 	Registry* exprUserAssist = explorer->GetSubKey("UserAssist");
 	for(const auto& item : exprUserAssist->GetSubKeys())
 		exprUserAssist->Delete(item.first);
@@ -444,13 +533,12 @@ void Spoof::SpoofWindows()
 	for(const auto& volume : cpcVolumes->GetSubKeys())
 		volume.second->GetValue("Data")->Set(volumeData);
 	
-	Registry* WindowsUpdate = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate");
+	Registry* WindowsUpdate = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate)");
 	WindowsUpdate->GetValue("SusClientIdValidation")->Set(Randomizer::Binary(200));
 	for(const auto& value: WindowsUpdate->GetValues())
 	{
 		std::string id = value.first.substr(value.first.size() - 2);
-		std::transform(id.begin(), id.end(), id.begin(), [](char c)
-		{
+		std::transform(id.begin(), id.end(), id.begin(), [](char c) {
 			return std::tolower(c);
 		});
 		if(id == "id" && value.second->GetType() == REG_SZ)
@@ -473,13 +561,14 @@ void Spoof::SpoofEnumPCI()
 
 void Spoof::SpoofRust()
 {
-	Registry* software = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\S-1-5-21-2416424366-1165671203-1984061266-1001\\SOFTWARE");
+	const std::string& rustSteamAppId = "252490";
+	Registry* software = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + GetSerialFolder() + "\\SOFTWARE");
 	software->Delete("Facepunch Studios LTD");
 	
-	Registry* unistall = RegistryManager::CreateRegistry("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
-	unistall->Delete("Steam App 252490");
+	Registry* unistall = RegistryManager::CreateRegistry(R"(HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall)");
+	unistall->Delete("Steam App" + rustSteamAppId);
 	
-	Registry* GameConfigStore = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\S-1-5-21-2416424366-1165671203-1984061266-1001\\System\\GameConfigStore");
+	Registry* GameConfigStore = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + GetSerialFolder() + "\\System\\GameConfigStore");
 	for(const auto& child : GameConfigStore->GetSubKey("Children")->GetSubKeys())
 	{
 		RegistryValue* MatchedExeFullPath = child.second->GetValue("MatchedExeFullPath");
@@ -492,5 +581,27 @@ void Spoof::SpoofRust()
 					GameConfigStore->Delete(child.first);
 		}
 	}
+	Registry* SteamAppRust = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + GetSerialFolder() + "\\SOFTWARE\\Valve\\Steam\\Apps");
+	SteamAppRust->Delete(rustSteamAppId);
+	Registry* FacePunchSoftware = RegistryManager::CreateRegistry("Computer\\HKEY_USERS\\" + GetSerialFolder() + "\\SOFTWARE");
+	FacePunchSoftware->Delete("Facepunch Studios LTD");
+}
+
+std::string Spoof::GetSerialFolder()
+{
+	static std::string cached = "";
+	if(!cached.empty())
+		return cached;
+	
+	Registry* serialRegistry = RegistryManager::CreateRegistry(R"(Computer\HKEY_USERS)");
+	for(const auto& subkey : serialRegistry->GetSubKeys())
+		if(subkey.first.find("S-1-5-21") != std::string::npos)
+		{
+			cached = subkey.first;
+			cached[cached.size() - 1] = '1';
+			return cached;
+		}
+	
+	return cached;
 	
 }

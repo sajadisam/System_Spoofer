@@ -72,11 +72,12 @@ HRESULT DisableEnableConnections(BOOL bEnable)
 				{
 					if(bEnable)
 					{
-						PTRACE("Enabling adapter: %S\n", pProps->pszwName);
+						EMBER_TRACE(L"Enabling adapter: %S\n", pProps->pszwName);
+						
 						hr = pConn->Connect();
 					} else
 					{
-						PTRACE("Disabling adapter: %S\n", pProps->pszwName);
+						EMBER_TRACE(L"Disabling adapter: %S\n", pProps->pszwName);
 						hr = pConn->Disconnect();
 					}
 					
@@ -96,7 +97,7 @@ HRESULT DisableEnableConnections(BOOL bEnable)
 	}
 	
 	if(FAILED(hr) && hr != HRESULT_FROM_WIN32(ERROR_RETRY))
-		PTRACE("Could not enable or disable connection (0x%08x)\r\n", hr);
+		EMBER_TRACE("Could not enable or disable connection (0x%08x)\r\n", hr);
 	
 	pNetConnectionManager->Release();
 	CoUninitialize();
