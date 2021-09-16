@@ -23,9 +23,6 @@ You can also retrieve the current mac address / adapter GUID with GetAdaptersInf
  * Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\WMI\Autologger
  */
 
-
-// TODO: CPU spoofing
-
 static struct ClassSession
 {
 	ClassSession()
@@ -74,7 +71,6 @@ static void SpoofEnum(Registry* registry, const std::string& randomClassGUID)
 void Spoof::Initialize()
 {
 	EMBER_INFO("Initializing Spoofer...");
-	
 	SpoofCPU();
 	EMBER_INFO("SpoofCPU");
 	SpoofGPU();
@@ -89,14 +85,16 @@ void Spoof::Initialize()
 	EMBER_INFO("SpoofBIOS");
 	SpoofWindows();
 	EMBER_INFO("SpoofWindows");
-	SpoofEnumDisplay();
-	EMBER_INFO("SpoofEnumDisplay");
+	SpoofDisplay();
+	EMBER_INFO("SpoofDisplay");
 	SpoofEnumAudio();
 	EMBER_INFO("SpoofEnumAudio");
 	SpoofEnumHID();
 	EMBER_INFO("SpoofEnumHID");
 	SpoofEnumPCI();
 	EMBER_INFO("SpoofEnumPCI");
+	SpoofRust();
+	EMBER_INFO("SpoofRust");
 	
 	EMBER_INFO("=========FINISHED SPOOFING REGISTRY=========");
 	
@@ -116,7 +114,7 @@ void Spoof::SpoofEnumAudio()
 		}
 }
 
-void Spoof::SpoofEnumDisplay()
+void Spoof::SpoofDisplay()
 {
 	Registry* monitor = RegistryManager::CreateRegistry(R"(computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\DISPLAY)");
 	const std::string& ClassGUID = "{" + Randomizer::DashedString(7, 4, ALLOW_NONE_CAPITALS | ALLOW_NUMBERS) + "}";
@@ -146,7 +144,20 @@ void Spoof::SpoofEnumDisplay()
 		}
 		spdlog::trace("Finished spoofing: {}", key.first);
 	}
-	//TODO: Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BasicDisplay
+	
+	Registry* devicesClassesDisplay = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Control\DeviceClasses\{10910c20-0c64-4172-9409-add3064c0cad})");
+	for(const auto& subkey : devicesClassesDisplay->GetSubKeys())
+	{
+		subkey.second->GetValue("")->Set(Randomizer::String(32, ALLOW_NONE_CAPITALS | ALLOW_NONE_CAPITALS | ALLOW_NUMBERS));
+	}
+	Registry* BasicDisplay = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BasicDisplay)");
+	std::string videoId = "{" + Randomizer::DashedString(8, 4, ALLOW_CAPITALS | ALLOW_NUMBERS) + "}";
+	BasicDisplay->GetSubKey("Video")->GetValue("VideoID")->Set(videoId);
+	for(const auto& subKey : BasicDisplay->GetSubKey("VolatileSettings")->GetValues())
+	{
+		if(subKey.second->GetType() == REG_BINARY)
+			subKey.second->Set(Randomizer::Binary(0x80 * 2));
+	}
 }
 
 void Spoof::SpoofEnumHID()
@@ -340,6 +351,29 @@ void Spoof::SpoofCPU()
 		}
 	} else
 		EMBER_ERROR("Couldn't find CPU subkey!");
+	Registry* descriptionSystem = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\)");
+	struct CPU_INFO
+	{
+		std::string name = Randomizer::String(20, ALLOW_CAPITALS | ALLOW_NUMBERS | ALLOW_NONE_CAPITALS);
+		std::string identifer = Randomizer::String(30, ALLOW_CAPITALS | ALLOW_NUMBERS | ALLOW_NONE_CAPITALS);
+		int FeatureSet = Randomizer::Integer(1000000000, 1500000000);
+		int Platform_Specific_Field1 = Randomizer::Integer(1000000000, 1500000000);
+		std::vector<BYTE> revision = Randomizer::Binary(0x8 * 2);
+	} cpuInfo;
+	
+	for(const auto& subkey : descriptionSystem->GetSubKey("CentralProcessor")->GetSubKeys())
+	{
+		Registry* key = subkey.second.get();
+		key->GetValue("FeatureSet")->Set(cpuInfo.FeatureSet);
+		key->GetValue("Platform Specific Field1")->Set(cpuInfo.Platform_Specific_Field1);
+		key->GetValue("Previous Update Revision")->Set(cpuInfo.revision);
+		key->GetValue("Update Revision")->Set(cpuInfo.revision);
+		key->GetValue("ProcessorNameString")->Set(cpuInfo.name);
+		key->GetValue("Identifier")->Set(cpuInfo.identifer);
+	}
+	for(const auto& subkey : descriptionSystem->GetSubKey("FloatingPointProcessor")->GetSubKeys())
+		subkey.second->GetValue("Identifier")->Set(cpuInfo.identifer);
+	
 }
 
 void Spoof::SpoofBIOS()
@@ -369,7 +403,7 @@ void Spoof::SpoofBIOS()
 		subkey.second->GetValue("BaseBoardProduct")->Set(BaseBoardProductMODIFIED);
 		subkey.second->GetValue("BaseBoardManufacturer")->Set(BaseBoardManufacturer);
 		
-		// WARN: potentially dangerous!
+		// WARNING: potentially dangerous!
 		for(const auto& computerID : subkey.second->GetSubKey("ComputerIds")->GetValues())
 			computerID.second->Delete();
 		for(const auto& productId : subkey.second->GetSubKey("ProductIds")->GetValues())
@@ -382,6 +416,10 @@ void Spoof::SpoofBIOS()
 	bios3->GetValue("SystemProductName")->Set(SystemProductName);
 	bios3->GetValue("ComputerHardwareId")->Set(ComputerHardwareId);
 	bios3->GetValue("ComputerHardwareIds")->Set(ComputerHardwareId);
+	
+	Registry* deviceClassesCPU = RegistryManager::CreateRegistry(R"(Computer\HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Control\DeviceClasses\{97fadb10-4e33-40ae-359c-8bef029dbdd0})");
+	for(const auto& subKey : deviceClassesCPU->GetSubKeys())
+		subKey.second->GetValue("DeviceInstance")->Set("ACPI\\" + Randomizer::String(60, ALLOW_CAPITALS | ALLOW_NONE_CAPITALS | ALLOW_NUMBERS));
 }
 
 void Spoof::SpoofMisc()
@@ -500,7 +538,12 @@ void Spoof::SpoofMisc()
 		if(subvalue.second->GetType() == REG_BINARY)
 			subvalue.second->Set(Randomizer::Binary(0x18 * 2));
 	
-	//TODO: Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Class\{4d36e967-e325-11ce-bfc1-08002be10318}
+		Registry* Autologger = RegistryManager::CreateRegistry("Computer\\HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\WMI\\Autologger");
+	for(const auto& subKey : Autologger->GetSubKeys())
+	{
+		std::string guid = "{" + Randomizer::DashedString(8,4,ALLOW_CAPITALS | ALLOW_NUMBERS) + "}";
+		subKey.second->GetValue("Guid")->Set(guid);
+	}
 }
 
 void Spoof::SpoofWindows()

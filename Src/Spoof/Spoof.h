@@ -19,7 +19,7 @@ public:
 	static void SpoofBIOS();
 	static void SpoofWindows();
 	static void SpoofMisc();
-	static void SpoofEnumDisplay();
+	static void SpoofDisplay();
 	static void SpoofEnumAudio();
 	static void SpoofEnumHID();
 	static void SpoofEnumPCI();
